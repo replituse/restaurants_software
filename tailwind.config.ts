@@ -81,6 +81,9 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        success: "hsl(145 63% 42%)",
+        warning: "hsl(38 92% 50%)",
+        danger: "hsl(4 78% 56%)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
