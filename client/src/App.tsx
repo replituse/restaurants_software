@@ -123,15 +123,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
+        <SidebarProvider style={style as React.CSSProperties} defaultOpen={true}>
           <div className="flex h-screen w-full">
             <AppSidebar />
-            <main className="flex-1 overflow-hidden">
+            <main className="flex-1 overflow-hidden flex flex-col w-full">
               <Router />
             </main>
           </div>
+          <Toaster />
         </SidebarProvider>
-        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   );

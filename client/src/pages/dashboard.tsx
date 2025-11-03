@@ -39,11 +39,11 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader title="Dashboard" showSearch={true} />
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard
             title="Today's Sales"
             value="₹45,320"
@@ -74,8 +74,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 bg-card rounded-lg border border-card-border p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-card rounded-lg border border-card-border p-4 sm:p-6">
             <h3 className="font-semibold text-lg mb-4">Hourly Orders</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={hourlyData}>
@@ -88,7 +88,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-card rounded-lg border border-card-border p-6">
+          <div className="bg-card rounded-lg border border-card-border p-4 sm:p-6">
             <h3 className="font-semibold text-lg mb-4">Quick Stats</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -120,7 +120,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-6 bg-card rounded-lg border border-card-border p-6">
+        <div className="mt-6 bg-card rounded-lg border border-card-border p-4 sm:p-6">
           <h3 className="font-semibold text-lg mb-4">Recent Orders</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
