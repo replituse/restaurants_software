@@ -174,7 +174,7 @@ export function AppSidebar() {
                     isActive={location === item.url}
                     data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     className={cn(
-                      "transition-colors",
+                      "transition-colors text-gray-700 dark:text-gray-300",
                       location === item.url && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
                     )}
                   >
@@ -184,10 +184,11 @@ export function AppSidebar() {
                         e.preventDefault();
                         handleNavigation(item.url);
                       }}
+                      className="flex items-center gap-2"
                     >
                       <item.icon className={cn(
                         "h-4 w-4",
-                        location === item.url && "text-red-600 dark:text-red-400"
+                        location === item.url ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400"
                       )} />
                       <span>{item.title}</span>
                     </a>
@@ -227,7 +228,7 @@ export function AppSidebar() {
                             isActive={location === item.url}
                             data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                             className={cn(
-                              "pl-8 transition-colors text-sm",
+                              "pl-8 transition-colors text-sm text-gray-600 dark:text-gray-400",
                               location === item.url && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
                             )}
                           >
@@ -237,10 +238,11 @@ export function AppSidebar() {
                                 e.preventDefault();
                                 handleNavigation(item.url);
                               }}
+                              className="flex items-center gap-2"
                             >
                               <item.icon className={cn(
                                 "h-3.5 w-3.5",
-                                location === item.url && "text-red-600 dark:text-red-400"
+                                location === item.url ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-500"
                               )} />
                               <span>{item.title}</span>
                             </a>
@@ -265,7 +267,7 @@ export function AppSidebar() {
                   isActive={location === "/settings"}
                   data-testid="nav-settings"
                   className={cn(
-                    "transition-colors",
+                    "transition-colors text-gray-700 dark:text-gray-300",
                     location === "/settings" && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
                   )}
                 >
@@ -275,10 +277,11 @@ export function AppSidebar() {
                       e.preventDefault();
                       handleNavigation("/settings");
                     }}
+                    className="flex items-center gap-2"
                   >
                     <Settings className={cn(
                       "h-4 w-4",
-                      location === "/settings" && "text-red-600 dark:text-red-400"
+                      location === "/settings" ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400"
                     )} />
                     <span>Settings</span>
                   </a>
@@ -290,7 +293,7 @@ export function AppSidebar() {
                   isActive={location === "/help"}
                   data-testid="nav-help"
                   className={cn(
-                    "transition-colors",
+                    "transition-colors text-gray-700 dark:text-gray-300",
                     location === "/help" && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
                   )}
                 >
@@ -300,10 +303,11 @@ export function AppSidebar() {
                       e.preventDefault();
                       handleNavigation("/help");
                     }}
+                    className="flex items-center gap-2"
                   >
                     <FileText className={cn(
                       "h-4 w-4",
-                      location === "/help" && "text-red-600 dark:text-red-400"
+                      location === "/help" ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-gray-400"
                     )} />
                     <span>Help & Support</span>
                   </a>
