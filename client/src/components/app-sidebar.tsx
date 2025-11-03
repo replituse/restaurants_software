@@ -8,42 +8,15 @@ import {
   Package,
   FileText,
   Utensils,
+  UserCog,
+  DollarSign,
+  Calendar,
+  ChevronRight,
+  Gift,
+  Tag,
+  Building2,
   Truck,
   Globe,
-  Gift,
-  Package2,
-  ShoppingBag,
-  UserCog,
-  Clock,
-  Calendar,
-  DollarSign,
-  CreditCard,
-  Calculator,
-  Receipt,
-  FileSpreadsheet,
-  TrendingUp,
-  Tag,
-  Ticket,
-  MessageSquare,
-  PieChart,
-  LineChart,
-  BarChart,
-  Trash2,
-  Building2,
-  Shield,
-  FileCheck,
-  Bell,
-  HelpCircle,
-  User,
-  Database,
-  QrCode,
-  ListOrdered,
-  PartyPopper,
-  Printer,
-  Mail,
-  Megaphone,
-  Plug,
-  HardDrive,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,149 +28,290 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useLocation } from "wouter";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
+// Main essential menu items
+const mainMenuItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Billing / POS", url: "/billing", icon: ShoppingCart },
+  { title: "Tables", url: "/tables", icon: Utensils },
+  { title: "Kitchen Display", url: "/kitchen", icon: ChefHat },
+  { title: "Menu", url: "/menu", icon: FileText },
+];
+
+// Grouped secondary items in collapsible sections
 const menuGroups = [
   {
-    label: "Core POS",
-    items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "Billing / POS", url: "/billing", icon: ShoppingCart },
-      { title: "Tables", url: "/tables", icon: Utensils },
-      { title: "Kitchen Display", url: "/kitchen", icon: ChefHat },
-      { title: "Menu Management", url: "/menu", icon: FileText },
-      { title: "Reports", url: "/reports", icon: BarChart3 },
-    ],
-  },
-  {
     label: "Operations",
+    icon: Truck,
     items: [
       { title: "Delivery", url: "/delivery", icon: Truck },
       { title: "Online Orders", url: "/online-orders", icon: Globe },
       { title: "Reservations", url: "/reservations", icon: Calendar },
-      { title: "Waiting List", url: "/waiting-list", icon: ListOrdered },
-      { title: "Events", url: "/events", icon: PartyPopper },
+      { title: "Waiting List", url: "/waiting-list", icon: FileText },
+      { title: "Events", url: "/events", icon: Calendar },
     ],
   },
   {
-    label: "Customer Management",
+    label: "Customers",
+    icon: Users,
     items: [
       { title: "Customers", url: "/customers", icon: Users },
       { title: "Loyalty Program", url: "/loyalty", icon: Gift },
-      { title: "Feedback", url: "/feedback", icon: MessageSquare },
-      { title: "Gift Cards", url: "/gift-cards", icon: Ticket },
+      { title: "Gift Cards", url: "/gift-cards", icon: Gift },
+      { title: "Feedback", url: "/feedback", icon: FileText },
     ],
   },
   {
     label: "Inventory",
+    icon: Package,
     items: [
       { title: "Inventory", url: "/inventory", icon: Package },
-      { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingBag },
-      { title: "Suppliers", url: "/suppliers", icon: Package2 },
-      { title: "Wastage", url: "/wastage", icon: Trash2 },
+      { title: "Purchase Orders", url: "/purchase-orders", icon: ShoppingCart },
+      { title: "Suppliers", url: "/suppliers", icon: Building2 },
+      { title: "Wastage", url: "/wastage", icon: FileText },
     ],
   },
   {
     label: "Staff & HR",
+    icon: UserCog,
     items: [
       { title: "Staff", url: "/staff", icon: UserCog },
-      { title: "Attendance", url: "/attendance", icon: Clock },
+      { title: "Attendance", url: "/attendance", icon: FileText },
       { title: "Commission", url: "/commission", icon: DollarSign },
-      { title: "User Roles", url: "/user-roles", icon: Shield },
+      { title: "User Roles", url: "/user-roles", icon: UserCog },
     ],
   },
   {
     label: "Finance",
+    icon: DollarSign,
     items: [
-      { title: "Expenses", url: "/expenses", icon: Receipt },
-      { title: "Payment Settlement", url: "/payment-settlement", icon: CreditCard },
-      { title: "Accounting", url: "/accounting", icon: Calculator },
-      { title: "Tax Reports", url: "/tax-reports", icon: FileSpreadsheet },
-      { title: "Invoices", url: "/invoices", icon: FileCheck },
+      { title: "Expenses", url: "/expenses", icon: DollarSign },
+      { title: "Payment Settlement", url: "/payment-settlement", icon: DollarSign },
+      { title: "Accounting", url: "/accounting", icon: DollarSign },
+      { title: "Tax Reports", url: "/tax-reports", icon: FileText },
+      { title: "Invoices", url: "/invoices", icon: FileText },
       { title: "Day End Settlement", url: "/day-end-settlement", icon: DollarSign },
     ],
   },
   {
-    label: "Marketing & Offers",
+    label: "Marketing",
+    icon: Tag,
     items: [
       { title: "Offers & Promotions", url: "/offers", icon: Tag },
-      { title: "Coupons", url: "/coupons", icon: Ticket },
-      { title: "Marketing", url: "/marketing", icon: Megaphone },
-      { title: "QR Codes", url: "/qr-codes", icon: QrCode },
+      { title: "Coupons", url: "/coupons", icon: Tag },
+      { title: "Marketing", url: "/marketing", icon: Tag },
+      { title: "QR Codes", url: "/qr-codes", icon: FileText },
     ],
   },
   {
     label: "Analytics",
+    icon: BarChart3,
     items: [
-      { title: "Analytics", url: "/analytics", icon: PieChart },
-      { title: "Sales Detailed", url: "/sales-detailed", icon: LineChart },
-      { title: "Item Performance", url: "/item-performance", icon: BarChart },
-      { title: "Kitchen Performance", url: "/kitchen-performance", icon: TrendingUp },
+      { title: "Analytics", url: "/analytics", icon: BarChart3 },
+      { title: "Reports", url: "/reports", icon: FileText },
+      { title: "Sales Detailed", url: "/sales-detailed", icon: BarChart3 },
+      { title: "Item Performance", url: "/item-performance", icon: BarChart3 },
+      { title: "Kitchen Performance", url: "/kitchen-performance", icon: BarChart3 },
     ],
   },
   {
     label: "System",
+    icon: Settings,
     items: [
       { title: "Multi-Location", url: "/multi-location", icon: Building2 },
-      { title: "Integrations", url: "/integrations", icon: Plug },
-      { title: "Printer Config", url: "/printer-config", icon: Printer },
-      { title: "Email Templates", url: "/email-templates", icon: Mail },
-      { title: "Notifications", url: "/notifications", icon: Bell },
-      { title: "Audit Logs", url: "/audit-logs", icon: FileCheck },
-      { title: "Database", url: "/database", icon: Database },
-      { title: "Backup", url: "/backup", icon: HardDrive },
-      { title: "Settings", url: "/settings", icon: Settings },
-    ],
-  },
-  {
-    label: "Help",
-    items: [
-      { title: "Help & Support", url: "/help", icon: HelpCircle },
-      { title: "Profile", url: "/profile", icon: User },
+      { title: "Integrations", url: "/integrations", icon: FileText },
+      { title: "Printer Config", url: "/printer-config", icon: FileText },
+      { title: "Email Templates", url: "/email-templates", icon: FileText },
+      { title: "Notifications", url: "/notifications", icon: FileText },
+      { title: "Audit Logs", url: "/audit-logs", icon: FileText },
+      { title: "Database", url: "/database", icon: FileText },
+      { title: "Backup", url: "/backup", icon: FileText },
     ],
   },
 ];
 
 export function AppSidebar() {
   const [location, setLocation] = useLocation();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleNavigation = (url: string) => {
+    setLocation(url);
+    // Auto-close sidebar on mobile when clicking a menu item
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
-    <Sidebar>
-      <SidebarContent>
+    <Sidebar className="border-r border-gray-200 dark:border-gray-800">
+      <SidebarContent className="bg-white dark:bg-gray-900">
+        {/* Logo/Brand */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-lg font-bold text-primary px-4 py-4">
-            🍽️ RestaurantPOS
+          <SidebarGroupLabel className="text-lg font-bold text-red-600 dark:text-red-500 px-4 py-4 flex items-center gap-2">
+            <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+              POS
+            </div>
+            RestaurantPOS
           </SidebarGroupLabel>
         </SidebarGroup>
-        
-        {menuGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
-              {group.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      <a href={item.url} onClick={(e) => {
+
+        {/* Essential Menu Items - Always Visible */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    className={cn(
+                      "transition-colors",
+                      location === item.url && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
+                    )}
+                  >
+                    <a
+                      href={item.url}
+                      onClick={(e) => {
                         e.preventDefault();
-                        setLocation(item.url);
-                      }}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                        handleNavigation(item.url);
+                      }}
+                    >
+                      <item.icon className={cn(
+                        "h-4 w-4",
+                        location === item.url && "text-red-600 dark:text-red-400"
+                      )} />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Collapsible Menu Groups */}
+        {menuGroups.map((group) => {
+          const GroupIcon = group.icon;
+          const hasActiveItem = group.items.some(item => item.url === location);
+          
+          return (
+            <SidebarGroup key={group.label}>
+              <Collapsible defaultOpen={hasActiveItem} className="group/collapsible">
+                <SidebarGroupLabel asChild>
+                  <CollapsibleTrigger className="w-full hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <GroupIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        {group.label}
+                      </span>
+                      <ChevronRight className="ml-auto h-4 w-4 text-gray-400 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                    </div>
+                  </CollapsibleTrigger>
+                </SidebarGroupLabel>
+                <CollapsibleContent>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.items.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={location === item.url}
+                            data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                            className={cn(
+                              "pl-8 transition-colors text-sm",
+                              location === item.url && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
+                            )}
+                          >
+                            <a
+                              href={item.url}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigation(item.url);
+                              }}
+                            >
+                              <item.icon className={cn(
+                                "h-3.5 w-3.5",
+                                location === item.url && "text-red-600 dark:text-red-400"
+                              )} />
+                              <span>{item.title}</span>
+                            </a>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </SidebarGroup>
+          );
+        })}
+
+        {/* Settings at Bottom */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/settings"}
+                  data-testid="nav-settings"
+                  className={cn(
+                    "transition-colors",
+                    location === "/settings" && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
+                  )}
+                >
+                  <a
+                    href="/settings"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation("/settings");
+                    }}
+                  >
+                    <Settings className={cn(
+                      "h-4 w-4",
+                      location === "/settings" && "text-red-600 dark:text-red-400"
+                    )} />
+                    <span>Settings</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/help"}
+                  data-testid="nav-help"
+                  className={cn(
+                    "transition-colors",
+                    location === "/help" && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium"
+                  )}
+                >
+                  <a
+                    href="/help"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation("/help");
+                    }}
+                  >
+                    <FileText className={cn(
+                      "h-4 w-4",
+                      location === "/help" && "text-red-600 dark:text-red-400"
+                    )} />
+                    <span>Help & Support</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );
