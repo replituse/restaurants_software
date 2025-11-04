@@ -1,20 +1,116 @@
-import { type User, type InsertUser } from "@shared/schema";
+import {
+  type User,
+  type InsertUser,
+  type Table,
+  type InsertTable,
+  type MenuItem,
+  type InsertMenuItem,
+  type Order,
+  type InsertOrder,
+  type OrderItem,
+  type InsertOrderItem,
+  type InventoryItem,
+  type InsertInventoryItem,
+} from "@shared/schema";
 import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+
+  getTables(): Promise<Table[]>;
+  getTable(id: string): Promise<Table | undefined>;
+  getTableByNumber(tableNumber: string): Promise<Table | undefined>;
+  createTable(table: InsertTable): Promise<Table>;
+  updateTableStatus(id: string, status: string): Promise<Table | undefined>;
+  updateTableOrder(id: string, orderId: string | null): Promise<Table | undefined>;
+
+  getMenuItems(): Promise<MenuItem[]>;
+  getMenuItem(id: string): Promise<MenuItem | undefined>;
+  createMenuItem(item: InsertMenuItem): Promise<MenuItem>;
+  updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined>;
+  deleteMenuItem(id: string): Promise<boolean>;
+
+  getOrders(): Promise<Order[]>;
+  getOrder(id: string): Promise<Order | undefined>;
+  getOrdersByTable(tableId: string): Promise<Order[]>;
+  getActiveOrders(): Promise<Order[]>;
+  createOrder(order: InsertOrder): Promise<Order>;
+  updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
+  updateOrderTotal(id: string, total: string): Promise<Order | undefined>;
+  completeOrder(id: string): Promise<Order | undefined>;
+
+  getOrderItems(orderId: string): Promise<OrderItem[]>;
+  getOrderItem(id: string): Promise<OrderItem | undefined>;
+  createOrderItem(item: InsertOrderItem): Promise<OrderItem>;
+  updateOrderItemStatus(id: string, status: string): Promise<OrderItem | undefined>;
+  deleteOrderItem(id: string): Promise<boolean>;
+
+  getInventoryItems(): Promise<InventoryItem[]>;
+  getInventoryItem(id: string): Promise<InventoryItem | undefined>;
+  createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem>;
+  updateInventoryQuantity(id: string, quantity: string): Promise<InventoryItem | undefined>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private tables: Map<string, Table>;
+  private menuItems: Map<string, MenuItem>;
+  private orders: Map<string, Order>;
+  private orderItems: Map<string, OrderItem>;
+  private inventoryItems: Map<string, InventoryItem>;
 
   constructor() {
     this.users = new Map();
+    this.tables = new Map();
+    this.menuItems = new Map();
+    this.orders = new Map();
+    this.orderItems = new Map();
+    this.inventoryItems = new Map();
+    this.seedData();
+  }
+
+  private seedData() {
+    const tableNumbers = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"];
+    const seats = [4, 6, 4, 2, 8, 4, 2, 6, 4, 4, 2, 4];
+    
+    tableNumbers.forEach((num, index) => {
+      const id = randomUUID();
+      const table: Table = {
+        id,
+        tableNumber: num,
+        seats: seats[index],
+        status: "free" as string,
+        currentOrderId: null,
+      };
+      this.tables.set(id, table);
+    });
+
+    const menuData: Omit<MenuItem, "id">[] = [
+      { name: "Chicken Burger", category: "Burgers", price: "199.00", cost: "80.00", available: true, variants: ["Regular", "Large"] },
+      { name: "Veggie Pizza", category: "Pizza", price: "299.00", cost: "120.00", available: true, variants: null },
+      { name: "French Fries", category: "Fast Food", price: "99.00", cost: "35.00", available: true, variants: ["Small", "Medium", "Large"] },
+      { name: "Coca Cola", category: "Beverages", price: "50.00", cost: "20.00", available: true, variants: null },
+      { name: "Caesar Salad", category: "Salads", price: "149.00", cost: "60.00", available: true, variants: null },
+      { name: "Pasta Alfredo", category: "Pasta", price: "249.00", cost: "100.00", available: true, variants: null },
+      { name: "Chocolate Cake", category: "Desserts", price: "129.00", cost: "50.00", available: true, variants: null },
+      { name: "Ice Cream", category: "Desserts", price: "79.00", cost: "30.00", available: true, variants: ["Vanilla", "Chocolate", "Strawberry"] },
+    ];
+
+    menuData.forEach((item) => {
+      const id = randomUUID();
+      const menuItem: MenuItem = {
+        id,
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        cost: item.cost,
+        available: item.available,
+        variants: item.variants,
+      };
+      this.menuItems.set(id, menuItem);
+    });
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -32,6 +128,216 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  async getTables(): Promise<Table[]> {
+    return Array.from(this.tables.values());
+  }
+
+  async getTable(id: string): Promise<Table | undefined> {
+    return this.tables.get(id);
+  }
+
+  async getTableByNumber(tableNumber: string): Promise<Table | undefined> {
+    return Array.from(this.tables.values()).find((t) => t.tableNumber === tableNumber);
+  }
+
+  async createTable(insertTable: InsertTable): Promise<Table> {
+    const id = randomUUID();
+    const table: Table = {
+      id,
+      tableNumber: insertTable.tableNumber,
+      seats: insertTable.seats,
+      status: insertTable.status ?? "free",
+      currentOrderId: null,
+    };
+    this.tables.set(id, table);
+    return table;
+  }
+
+  async updateTableStatus(id: string, status: string): Promise<Table | undefined> {
+    const table = this.tables.get(id);
+    if (!table) return undefined;
+    const updated: Table = { ...table, status };
+    this.tables.set(id, updated);
+    return updated;
+  }
+
+  async updateTableOrder(id: string, orderId: string | null): Promise<Table | undefined> {
+    const table = this.tables.get(id);
+    if (!table) return undefined;
+    const updated: Table = { ...table, currentOrderId: orderId };
+    this.tables.set(id, updated);
+    return updated;
+  }
+
+  async getMenuItems(): Promise<MenuItem[]> {
+    return Array.from(this.menuItems.values());
+  }
+
+  async getMenuItem(id: string): Promise<MenuItem | undefined> {
+    return this.menuItems.get(id);
+  }
+
+  async createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
+    const id = randomUUID();
+    const menuItem: MenuItem = {
+      id,
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      cost: item.cost,
+      available: item.available ?? true,
+      variants: item.variants ?? null,
+    };
+    this.menuItems.set(id, menuItem);
+    return menuItem;
+  }
+
+  async updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<MenuItem | undefined> {
+    const existing = this.menuItems.get(id);
+    if (!existing) return undefined;
+    const updated: MenuItem = {
+      ...existing,
+      name: item.name ?? existing.name,
+      category: item.category ?? existing.category,
+      price: item.price ?? existing.price,
+      cost: item.cost ?? existing.cost,
+      available: item.available ?? existing.available,
+      variants: item.variants !== undefined ? item.variants : existing.variants,
+    };
+    this.menuItems.set(id, updated);
+    return updated;
+  }
+
+  async deleteMenuItem(id: string): Promise<boolean> {
+    return this.menuItems.delete(id);
+  }
+
+  async getOrders(): Promise<Order[]> {
+    return Array.from(this.orders.values());
+  }
+
+  async getOrder(id: string): Promise<Order | undefined> {
+    return this.orders.get(id);
+  }
+
+  async getOrdersByTable(tableId: string): Promise<Order[]> {
+    return Array.from(this.orders.values()).filter((o) => o.tableId === tableId);
+  }
+
+  async getActiveOrders(): Promise<Order[]> {
+    return Array.from(this.orders.values()).filter(
+      (o) => o.status !== "completed" && o.status !== "cancelled"
+    );
+  }
+
+  async createOrder(insertOrder: InsertOrder): Promise<Order> {
+    const id = randomUUID();
+    const order: Order = {
+      id,
+      tableId: insertOrder.tableId ?? null,
+      orderType: insertOrder.orderType,
+      status: insertOrder.status ?? "pending",
+      total: insertOrder.total ?? "0",
+      createdAt: new Date(),
+      completedAt: null,
+    };
+    this.orders.set(id, order);
+    return order;
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<Order | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+    const updated: Order = { ...order, status };
+    this.orders.set(id, updated);
+    return updated;
+  }
+
+  async updateOrderTotal(id: string, total: string): Promise<Order | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+    const updated: Order = { ...order, total };
+    this.orders.set(id, updated);
+    return updated;
+  }
+
+  async completeOrder(id: string): Promise<Order | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+    const updated: Order = {
+      ...order,
+      status: "completed",
+      completedAt: new Date(),
+    };
+    this.orders.set(id, updated);
+    return updated;
+  }
+
+  async getOrderItems(orderId: string): Promise<OrderItem[]> {
+    return Array.from(this.orderItems.values()).filter((item) => item.orderId === orderId);
+  }
+
+  async getOrderItem(id: string): Promise<OrderItem | undefined> {
+    return this.orderItems.get(id);
+  }
+
+  async createOrderItem(item: InsertOrderItem): Promise<OrderItem> {
+    const id = randomUUID();
+    const orderItem: OrderItem = {
+      id,
+      orderId: item.orderId,
+      menuItemId: item.menuItemId,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      notes: item.notes ?? null,
+      status: item.status ?? "new",
+    };
+    this.orderItems.set(id, orderItem);
+    return orderItem;
+  }
+
+  async updateOrderItemStatus(id: string, status: string): Promise<OrderItem | undefined> {
+    const orderItem = this.orderItems.get(id);
+    if (!orderItem) return undefined;
+    const updated: OrderItem = { ...orderItem, status };
+    this.orderItems.set(id, updated);
+    return updated;
+  }
+
+  async deleteOrderItem(id: string): Promise<boolean> {
+    return this.orderItems.delete(id);
+  }
+
+  async getInventoryItems(): Promise<InventoryItem[]> {
+    return Array.from(this.inventoryItems.values());
+  }
+
+  async getInventoryItem(id: string): Promise<InventoryItem | undefined> {
+    return this.inventoryItems.get(id);
+  }
+
+  async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> {
+    const id = randomUUID();
+    const inventoryItem: InventoryItem = {
+      id,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      minQuantity: item.minQuantity ?? null,
+    };
+    this.inventoryItems.set(id, inventoryItem);
+    return inventoryItem;
+  }
+
+  async updateInventoryQuantity(id: string, quantity: string): Promise<InventoryItem | undefined> {
+    const item = this.inventoryItems.get(id);
+    if (!item) return undefined;
+    const updated: InventoryItem = { ...item, quantity };
+    this.inventoryItems.set(id, updated);
+    return updated;
   }
 }
 

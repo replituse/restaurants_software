@@ -1,83 +1,92 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
-import KDSOrderCard from "@/components/KDSOrderCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Clock, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Order, OrderItem as DBOrderItem, Table } from "@shared/schema";
 
-interface KDSOrder {
-  orderId: string;
+interface OrderWithDetails {
+  order: Order;
+  items: DBOrderItem[];
   tableNumber: string;
-  status: "new" | "preparing" | "ready";
-  orderTime: Date;
-  items: { name: string; quantity: number; ready: boolean }[];
 }
 
 export default function KitchenPage() {
-  const [orders, setOrders] = useState<KDSOrder[]>([
-    {
-      orderId: "001",
-      tableNumber: "T5",
-      status: "new",
-      orderTime: new Date(Date.now() - 120000),
-      items: [
-        { name: "Chicken Burger", quantity: 2, ready: false },
-        { name: "French Fries", quantity: 1, ready: false },
-      ],
-    },
-    {
-      orderId: "002",
-      tableNumber: "T3",
-      status: "preparing",
-      orderTime: new Date(Date.now() - 300000),
-      items: [
-        { name: "Veggie Pizza", quantity: 1, ready: false },
-        { name: "Coca Cola", quantity: 2, ready: true },
-        { name: "Garlic Bread", quantity: 1, ready: false },
-      ],
-    },
-    {
-      orderId: "003",
-      tableNumber: "T8",
-      status: "new",
-      orderTime: new Date(Date.now() - 60000),
-      items: [
-        { name: "Pasta Alfredo", quantity: 1, ready: false },
-        { name: "Caesar Salad", quantity: 1, ready: false },
-      ],
-    },
-    {
-      orderId: "004",
-      tableNumber: "T2",
-      status: "preparing",
-      orderTime: new Date(Date.now() - 420000),
-      items: [
-        { name: "Margherita Pizza", quantity: 2, ready: true },
-        { name: "Chicken Wings", quantity: 1, ready: false },
-      ],
-    },
-    {
-      orderId: "005",
-      tableNumber: "T10",
-      status: "ready",
-      orderTime: new Date(Date.now() - 600000),
-      items: [
-        { name: "Chocolate Cake", quantity: 2, ready: true },
-        { name: "Ice Cream", quantity: 2, ready: true },
-      ],
-    },
-  ]);
+  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleStatusChange = (orderId: string, newStatus: "new" | "preparing" | "ready") => {
-    setOrders(
-      orders.map((order) =>
-        order.orderId === orderId ? { ...order, status: newStatus } : order
-      )
-    );
+  const loadOrders = async () => {
+    try {
+      setIsLoading(true);
+      const ordersRes = await fetch("/api/orders/active");
+      const activeOrders: Order[] = await ordersRes.json();
+
+      const ordersWithDetails = await Promise.all(
+        activeOrders.map(async (order) => {
+          const itemsRes = await fetch(`/api/orders/${order.id}/items`);
+          const items: DBOrderItem[] = await itemsRes.json();
+
+          let tableNumber = "";
+          if (order.tableId) {
+            const tableRes = await fetch(`/api/tables/${order.tableId}`);
+            const table: Table = await tableRes.json();
+            tableNumber = table.tableNumber;
+          } else if (order.orderType === "delivery") {
+            tableNumber = "Delivery";
+          } else {
+            tableNumber = "Pickup";
+          }
+
+          return { order, items, tableNumber };
+        })
+      );
+
+      setOrders(ordersWithDetails);
+    } catch (error) {
+      console.error("Failed to load orders:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+    const interval = setInterval(loadOrders, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const updateItemStatusMutation = useMutation({
+    mutationFn: async ({ itemId, status }: { itemId: string; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/order-items/${itemId}/status`, { status });
+      return await res.json();
+    },
+    onSuccess: () => {
+      loadOrders();
+      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+    },
+  });
+
+  const handleItemStatusChange = async (itemId: string, newStatus: string) => {
+    await updateItemStatusMutation.mutateAsync({ itemId, status: newStatus });
+  };
+
+  const getOverallOrderStatus = (items: DBOrderItem[]): "new" | "preparing" | "ready" => {
+    if (items.every((item) => item.status === "ready" || item.status === "served")) {
+      return "ready";
+    }
+    if (items.some((item) => item.status === "preparing" || item.status === "ready")) {
+      return "preparing";
+    }
+    return "new";
   };
 
   const statusCounts = {
-    new: orders.filter((o) => o.status === "new").length,
-    preparing: orders.filter((o) => o.status === "preparing").length,
-    ready: orders.filter((o) => o.status === "ready").length,
+    new: orders.filter((o) => getOverallOrderStatus(o.items) === "new").length,
+    preparing: orders.filter((o) => getOverallOrderStatus(o.items) === "preparing").length,
+    ready: orders.filter((o) => getOverallOrderStatus(o.items) === "ready").length,
   };
 
   return (
@@ -108,14 +117,179 @@ export default function KitchenPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {orders.map((order) => (
-            <KDSOrderCard
-              key={order.orderId}
-              {...order}
-              onStatusChange={handleStatusChange}
-            />
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading orders...</div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No active orders</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {orders.map(({ order, items, tableNumber }) => (
+              <KitchenOrderCard
+                key={order.id}
+                orderId={order.id}
+                tableNumber={tableNumber}
+                orderTime={new Date(order.createdAt)}
+                items={items}
+                status={getOverallOrderStatus(items)}
+                onItemStatusChange={handleItemStatusChange}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface KitchenOrderCardProps {
+  orderId: string;
+  tableNumber: string;
+  orderTime: Date;
+  items: DBOrderItem[];
+  status: "new" | "preparing" | "ready";
+  onItemStatusChange: (itemId: string, status: string) => void;
+}
+
+const statusConfig = {
+  new: { color: "bg-danger border-danger", label: "New Order", textColor: "text-danger" },
+  preparing: { color: "bg-warning border-warning", label: "Preparing", textColor: "text-warning" },
+  ready: { color: "bg-success border-success", label: "Ready", textColor: "text-success" },
+};
+
+function KitchenOrderCard({
+  orderId,
+  tableNumber,
+  orderTime,
+  items,
+  status,
+  onItemStatusChange,
+}: KitchenOrderCardProps) {
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  useEffect(() => {
+    const updateTime = () => {
+      const elapsed = Math.floor((Date.now() - orderTime.getTime()) / 1000);
+      setElapsedTime(elapsed);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [orderTime]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleStartPreparing = () => {
+    const firstNewItem = items.find((item) => item.status === "new");
+    if (firstNewItem) {
+      onItemStatusChange(firstNewItem.id, "preparing");
+    }
+  };
+
+  const handleMarkReady = () => {
+    items.forEach((item) => {
+      if (item.status === "preparing") {
+        onItemStatusChange(item.id, "ready");
+      }
+    });
+  };
+
+  return (
+    <div
+      className={cn("bg-card rounded-lg border-2 overflow-hidden", statusConfig[status].color)}
+      data-testid={`kds-order-${orderId}`}
+    >
+      <div className={cn("p-3 text-white", statusConfig[status].color)}>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-bold text-lg">Order #{orderId.substring(0, 8)}</h3>
+            <p className="text-sm opacity-90">Table {tableNumber}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            <span className="font-mono font-semibold">{formatTime(elapsedTime)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-3 bg-card">
+        <div className="space-y-2 mb-3">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-start justify-between py-2 border-b border-border last:border-0"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono">
+                    {item.quantity}x
+                  </Badge>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      (item.status === "ready" || item.status === "served") &&
+                        "line-through text-muted-foreground"
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                </div>
+                {item.notes && (
+                  <p className="text-xs text-muted-foreground mt-1 ml-12 italic">{item.notes}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {item.status === "ready" || item.status === "served" ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      onItemStatusChange(
+                        item.id,
+                        item.status === "new" ? "preparing" : "ready"
+                      )
+                    }
+                    data-testid={`button-status-${item.id}`}
+                  >
+                    {item.status === "new" ? "Start" : "Ready"}
+                  </Button>
+                )}
+              </div>
+            </div>
           ))}
+        </div>
+
+        <div className="flex gap-2">
+          {status === "new" && (
+            <Button
+              className="flex-1"
+              onClick={handleStartPreparing}
+              data-testid={`button-start-${orderId}`}
+            >
+              Start Preparing
+            </Button>
+          )}
+          {status === "preparing" && (
+            <Button
+              className="flex-1"
+              variant="default"
+              onClick={handleMarkReady}
+              data-testid={`button-ready-${orderId}`}
+            >
+              Mark All Ready
+            </Button>
+          )}
+          {status === "ready" && (
+            <div className="flex-1 text-center py-2 font-semibold text-success">
+              ✓ Ready for Pickup
+            </div>
+          )}
         </div>
       </div>
     </div>

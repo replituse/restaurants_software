@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Send } from "lucide-react";
+import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import CategorySidebar from "@/components/CategorySidebar";
 import MenuItemCard from "@/components/MenuItemCard";
@@ -15,82 +17,147 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  available: boolean;
-}
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { MenuItem } from "@shared/schema";
 
 interface OrderItem {
   id: string;
+  menuItemId: string;
   name: string;
   price: number;
   quantity: number;
+  notes?: string;
 }
 
 export default function BillingPage() {
+  const [, navigate] = useLocation();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [serviceType, setServiceType] = useState<"dine-in" | "delivery" | "pickup">("dine-in");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi">("cash");
+  const [currentTableId, setCurrentTableId] = useState<string | null>(null);
+  const [tableNumber, setTableNumber] = useState<string>("");
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tableId = params.get("tableId");
+    const tableNum = params.get("tableNumber");
+    const orderId = params.get("orderId");
+    const type = params.get("type") as "dine-in" | "delivery" | "pickup" | null;
+    
+    if (tableId && tableNum) {
+      setCurrentTableId(tableId);
+      setTableNumber(tableNum);
+      setServiceType(type || "dine-in");
+    } else if (type === "delivery") {
+      setServiceType("delivery");
+    }
+
+    if (orderId) {
+      setCurrentOrderId(orderId);
+      fetchExistingOrder(orderId);
+    }
+  }, []);
+
+  const fetchExistingOrder = async (orderId: string) => {
+    try {
+      const itemsRes = await fetch(`/api/orders/${orderId}/items`);
+      const items = await itemsRes.json();
+      
+      const formattedItems = items.map((item: any) => ({
+        id: item.id,
+        menuItemId: item.menuItemId,
+        name: item.name,
+        price: parseFloat(item.price),
+        quantity: item.quantity,
+        notes: item.notes || undefined,
+      }));
+      
+      setOrderItems(formattedItems);
+    } catch (error) {
+      console.error("Failed to fetch existing order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load existing order",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const { data: menuItems = [], isLoading: menuLoading } = useQuery<MenuItem[]>({
+    queryKey: ["/api/menu"],
+  });
+
+  const createOrderMutation = useMutation({
+    mutationFn: async (data: { tableId: string | null; orderType: string }) => {
+      const res = await apiRequest("POST", "/api/orders", data);
+      return await res.json();
+    },
+    onSuccess: (order: any) => {
+      setCurrentOrderId(order.id);
+    },
+  });
+
+  const addOrderItemMutation = useMutation({
+    mutationFn: async (data: { orderId: string; item: any }) => {
+      const res = await apiRequest("POST", `/api/orders/${data.orderId}/items`, data.item);
+      return await res.json();
+    },
+  });
+
+  const completeOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/complete`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
+    },
+  });
 
   const categories = [
     { id: "all", name: "All Items" },
-    { id: "fast-food", name: "Fast Food" },
-    { id: "beverages", name: "Beverages" },
-    { id: "burgers", name: "Burgers" },
-    { id: "pizza", name: "Pizza" },
-    { id: "desserts", name: "Desserts" },
-    { id: "salads", name: "Salads" },
-    { id: "appetizers", name: "Appetizers" },
-  ];
-
-  const menuItems: MenuItem[] = [
-    { id: "1", name: "Chicken Burger", price: 199, category: "burgers", available: true },
-    { id: "2", name: "Veggie Pizza", price: 299, category: "pizza", available: true },
-    { id: "3", name: "French Fries", price: 99, category: "fast-food", available: true },
-    { id: "4", name: "Coca Cola", price: 50, category: "beverages", available: true },
-    { id: "5", name: "Caesar Salad", price: 149, category: "salads", available: true },
-    { id: "6", name: "Chocolate Cake", price: 120, category: "desserts", available: false },
-    { id: "7", name: "Margherita Pizza", price: 249, category: "pizza", available: true },
-    { id: "8", name: "Chicken Wings", price: 179, category: "appetizers", available: true },
-    { id: "9", name: "Pepsi", price: 50, category: "beverages", available: true },
-    { id: "10", name: "Pasta Alfredo", price: 229, category: "fast-food", available: true },
-    { id: "11", name: "Garlic Bread", price: 89, category: "appetizers", available: true },
-    { id: "12", name: "Ice Cream", price: 80, category: "desserts", available: true },
+    { id: "Burgers", name: "Burgers" },
+    { id: "Pizza", name: "Pizza" },
+    { id: "Fast Food", name: "Fast Food" },
+    { id: "Beverages", name: "Beverages" },
+    { id: "Desserts", name: "Desserts" },
+    { id: "Salads", name: "Salads" },
+    { id: "Pasta", name: "Pasta" },
   ];
 
   const filteredItems = menuItems.filter((item) => {
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesSearch && item.available;
   });
 
   const handleAddItem = (itemId: string) => {
     const menuItem = menuItems.find((item) => item.id === itemId);
     if (!menuItem) return;
 
-    const existingItem = orderItems.find((item) => item.id === itemId);
+    const existingItem = orderItems.find((item) => item.menuItemId === itemId);
     if (existingItem) {
       setOrderItems(
         orderItems.map((item) =>
-          item.id === itemId ? { ...item, quantity: item.quantity + 1 } : item
+          item.menuItemId === itemId ? { ...item, quantity: item.quantity + 1 } : item
         )
       );
     } else {
       setOrderItems([
         ...orderItems,
         {
-          id: menuItem.id,
+          id: Math.random().toString(36).substring(7),
+          menuItemId: menuItem.id,
           name: menuItem.name,
-          price: menuItem.price,
+          price: parseFloat(menuItem.price),
           quantity: 1,
+          notes: undefined,
         },
       ]);
     }
@@ -108,11 +175,68 @@ export default function BillingPage() {
     setOrderItems(orderItems.filter((item) => item.id !== id));
   };
 
-  const handleCheckout = () => {
+  const handleUpdateNotes = (id: string, notes: string) => {
+    setOrderItems(orderItems.map((item) => (item.id === id ? { ...item, notes } : item)));
+  };
+
+  const handleSendKOT = async () => {
     if (orderItems.length === 0) {
       toast({
         title: "Cart is empty",
-        description: "Please add items before checkout",
+        description: "Please add items before sending to kitchen",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      let orderId = currentOrderId;
+
+      if (!orderId) {
+        const order = await createOrderMutation.mutateAsync({
+          tableId: currentTableId,
+          orderType: serviceType,
+        });
+        orderId = order.id;
+      }
+
+      for (const item of orderItems) {
+        await addOrderItemMutation.mutateAsync({
+          orderId: orderId!,
+          item: {
+            orderId: orderId!,
+            menuItemId: item.menuItemId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price.toFixed(2),
+            notes: item.notes || null,
+            status: "new",
+          },
+        });
+      }
+
+      toast({
+        title: "KOT Sent!",
+        description: "Order sent to kitchen successfully",
+      });
+
+      if (serviceType === "delivery") {
+        setShowCheckoutDialog(true);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send order to kitchen",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCheckout = () => {
+    if (orderItems.length === 0 && !currentOrderId) {
+      toast({
+        title: "No order",
+        description: "Please add items or send KOT first",
         variant: "destructive",
       });
       return;
@@ -120,18 +244,45 @@ export default function BillingPage() {
     setShowCheckoutDialog(true);
   };
 
-  const handleConfirmCheckout = () => {
+  const handleConfirmCheckout = async () => {
     const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const tax = subtotal * 0.05;
     const total = subtotal + tax;
 
-    toast({
-      title: "Order placed successfully!",
-      description: `Total: ₹${total.toFixed(2)} - Payment: ${paymentMethod.toUpperCase()}`,
-    });
+    if (!currentOrderId) {
+      toast({
+        title: "Error",
+        description: "Please send KOT before billing",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setOrderItems([]);
-    setShowCheckoutDialog(false);
+    try {
+      await completeOrderMutation.mutateAsync(currentOrderId);
+
+      toast({
+        title: "Order completed!",
+        description: `Total: ₹${total.toFixed(2)} - Payment: ${paymentMethod.toUpperCase()}`,
+      });
+
+      setOrderItems([]);
+      setCurrentOrderId(null);
+      setShowCheckoutDialog(false);
+
+      if (currentTableId) {
+        navigate("/tables");
+      } else {
+        setCurrentTableId(null);
+        setTableNumber("");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to complete order",
+        variant: "destructive",
+      });
+    }
   };
 
   const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -145,11 +296,17 @@ export default function BillingPage() {
       <div className="bg-muted/30 border-b border-border px-6 py-2">
         <div className="flex items-center justify-between text-sm">
           <div className="flex gap-6">
+            {tableNumber ? (
+              <span className="text-muted-foreground">
+                Table: <span className="font-medium text-foreground">{tableNumber}</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                Mode: <span className="font-medium text-foreground capitalize">{serviceType}</span>
+              </span>
+            )}
             <span className="text-muted-foreground">
-              Table: <span className="font-medium text-foreground">T-5</span>
-            </span>
-            <span className="text-muted-foreground">
-              User: <span className="font-medium text-foreground">John Doe</span>
+              User: <span className="font-medium text-foreground">Cashier</span>
             </span>
           </div>
           <span className="text-muted-foreground">
@@ -192,11 +349,23 @@ export default function BillingPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 md:p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-              {filteredItems.map((item) => (
-                <MenuItemCard key={item.id} {...item} onAdd={handleAddItem} />
-              ))}
-            </div>
+            {menuLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading menu...</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+                {filteredItems.map((item) => (
+                  <MenuItemCard 
+                    key={item.id} 
+                    id={item.id}
+                    name={item.name}
+                    price={parseFloat(item.price)}
+                    category={item.category}
+                    available={item.available}
+                    onAdd={handleAddItem} 
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -207,7 +376,10 @@ export default function BillingPage() {
             onServiceTypeChange={setServiceType}
             onUpdateQuantity={handleUpdateQuantity}
             onRemoveItem={handleRemoveItem}
+            onUpdateNotes={handleUpdateNotes}
             onCheckout={handleCheckout}
+            onSendKOT={handleSendKOT}
+            showKOTButton={!currentOrderId}
           />
         </div>
       </div>
