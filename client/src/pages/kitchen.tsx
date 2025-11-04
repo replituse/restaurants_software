@@ -54,8 +54,6 @@ export default function KitchenPage() {
 
   useEffect(() => {
     loadOrders();
-    const interval = setInterval(loadOrders, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   const updateItemStatusMutation = useMutation({
@@ -69,8 +67,29 @@ export default function KitchenPage() {
     },
   });
 
+  const markAllPreparedMutation = useMutation({
+    mutationFn: async () => {
+      const allItems = orders.flatMap(o => o.items);
+      const pendingItems = allItems.filter(item => item.status !== "ready" && item.status !== "served");
+      
+      await Promise.all(
+        pendingItems.map(item => 
+          apiRequest("PATCH", `/api/order-items/${item.id}/status`, { status: "ready" })
+        )
+      );
+    },
+    onSuccess: () => {
+      loadOrders();
+      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+    },
+  });
+
   const handleItemStatusChange = async (itemId: string, newStatus: string) => {
     await updateItemStatusMutation.mutateAsync({ itemId, status: newStatus });
+  };
+
+  const handleMarkAllPrepared = async () => {
+    await markAllPreparedMutation.mutateAsync();
   };
 
   const getOverallOrderStatus = (items: DBOrderItem[]): "new" | "preparing" | "ready" => {
@@ -94,25 +113,36 @@ export default function KitchenPage() {
       <AppHeader title="Kitchen Display System" showSearch={false} />
 
       <div className="p-6 border-b border-border bg-muted/30">
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-danger"></div>
-            <span className="text-sm">
-              New <Badge variant="secondary">{statusCounts.new}</Badge>
-            </span>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-danger"></div>
+              <span className="text-sm">
+                New <Badge variant="secondary">{statusCounts.new}</Badge>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-warning"></div>
+              <span className="text-sm">
+                Preparing <Badge variant="secondary">{statusCounts.preparing}</Badge>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-success"></div>
+              <span className="text-sm">
+                Ready <Badge variant="secondary">{statusCounts.ready}</Badge>
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-warning"></div>
-            <span className="text-sm">
-              Preparing <Badge variant="secondary">{statusCounts.preparing}</Badge>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-success"></div>
-            <span className="text-sm">
-              Ready <Badge variant="secondary">{statusCounts.ready}</Badge>
-            </span>
-          </div>
+          <Button
+            onClick={handleMarkAllPrepared}
+            disabled={orders.length === 0 || markAllPreparedMutation.isPending}
+            className="bg-success hover:bg-success/90"
+            data-testid="button-mark-all-prepared"
+          >
+            <Check className="h-4 w-4 mr-2" />
+            {markAllPreparedMutation.isPending ? "Processing..." : "Mark All Prepared"}
+          </Button>
         </div>
       </div>
 

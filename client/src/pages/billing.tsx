@@ -361,6 +361,7 @@ export default function BillingPage() {
                     price={parseFloat(item.price)}
                     category={item.category}
                     available={item.available}
+                    isVeg={item.isVeg}
                     onAdd={handleAddItem} 
                   />
                 ))}

@@ -36,6 +36,7 @@ export const menuItems = pgTable("menu_items", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   cost: decimal("cost", { precision: 10, scale: 2 }).notNull(),
   available: boolean("available").notNull().default(true),
+  isVeg: boolean("is_veg").notNull().default(true),
   variants: text("variants").array(),
 });
 

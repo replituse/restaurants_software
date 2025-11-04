@@ -1,5 +1,3 @@
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface MenuItemCardProps {
@@ -9,6 +7,7 @@ interface MenuItemCardProps {
   category: string;
   available?: boolean;
   image?: string;
+  isVeg?: boolean;
   onAdd: (id: string) => void;
 }
 
@@ -19,22 +18,23 @@ export default function MenuItemCard({
   category,
   available = true,
   image,
+  isVeg = true,
   onAdd,
 }: MenuItemCardProps) {
   return (
     <div
-      className={`bg-card border border-card-border rounded-lg overflow-hidden hover-elevate transition-all ${
-        !available ? "opacity-60" : ""
+      className={`bg-card border border-card-border rounded-lg overflow-hidden hover-elevate transition-all relative ${
+        !available ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
       }`}
+      onClick={() => available && onAdd(id)}
       data-testid={`menu-item-${id}`}
     >
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isVeg ? 'bg-green-500' : 'bg-red-500'}`}></div>
       <div className="aspect-video bg-muted relative">
         {image ? (
           <img src={image} alt={name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <span className="text-4xl">🍽️</span>
-          </div>
+          <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50"></div>
         )}
         {!available && (
           <Badge className="absolute top-2 right-2 bg-danger text-white">
@@ -51,15 +51,6 @@ export default function MenuItemCard({
           <span className="text-lg font-bold text-primary" data-testid={`text-price-${id}`}>
             ₹{price.toFixed(2)}
           </span>
-          <Button
-            size="icon"
-            variant="default"
-            disabled={!available}
-            onClick={() => onAdd(id)}
-            data-testid={`button-add-${id}`}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </div>
