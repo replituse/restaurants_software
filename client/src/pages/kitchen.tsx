@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useWebSocket } from "@/hooks/use-websocket";
 import type { Order, OrderItem as DBOrderItem, Table } from "@shared/schema";
 
 interface OrderWithDetails {
@@ -15,61 +16,68 @@ interface OrderWithDetails {
 }
 
 export default function KitchenPage() {
-  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  useWebSocket();
+  
+  const { data: activeOrders = [] } = useQuery<Order[]>({
+    queryKey: ["/api/orders/active"],
+  });
+
+  const { data: tables = [] } = useQuery<Table[]>({
+    queryKey: ["/api/tables"],
+  });
+
+  const [ordersWithDetails, setOrdersWithDetails] = useState<OrderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadOrders = async () => {
-    try {
-      setIsLoading(true);
-      const ordersRes = await fetch("/api/orders/active");
-      const activeOrders: Order[] = await ordersRes.json();
-
-      const ordersWithDetails = await Promise.all(
-        activeOrders.map(async (order) => {
-          const itemsRes = await fetch(`/api/orders/${order.id}/items`);
-          const items: DBOrderItem[] = await itemsRes.json();
-
-          let tableNumber = "";
-          if (order.tableId) {
-            const tableRes = await fetch(`/api/tables/${order.tableId}`);
-            const table: Table = await tableRes.json();
-            tableNumber = table.tableNumber;
-          } else if (order.orderType === "delivery") {
-            tableNumber = "Delivery";
-          } else {
-            tableNumber = "Pickup";
-          }
-
-          return { order, items, tableNumber };
-        })
-      );
-
-      setOrders(ordersWithDetails);
-    } catch (error) {
-      console.error("Failed to load orders:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadOrders();
-  }, []);
+    const loadOrderDetails = async () => {
+      if (!activeOrders.length) {
+        setOrdersWithDetails([]);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const ordersWithItems = await Promise.all(
+          activeOrders.map(async (order) => {
+            const itemsRes = await fetch(`/api/orders/${order.id}/items`);
+            const items: DBOrderItem[] = await itemsRes.json();
+
+            let tableNumber = "";
+            if (order.tableId) {
+              const table = tables.find(t => t.id === order.tableId);
+              tableNumber = table?.tableNumber || "Unknown";
+            } else if (order.orderType === "delivery") {
+              tableNumber = "Delivery";
+            } else {
+              tableNumber = "Pickup";
+            }
+
+            return { order, items, tableNumber };
+          })
+        );
+
+        setOrdersWithDetails(ordersWithItems);
+      } catch (error) {
+        console.error("Failed to load order details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrderDetails();
+  }, [activeOrders, tables]);
 
   const updateItemStatusMutation = useMutation({
     mutationFn: async ({ itemId, status }: { itemId: string; status: string }) => {
       const res = await apiRequest("PATCH", `/api/order-items/${itemId}/status`, { status });
       return await res.json();
     },
-    onSuccess: () => {
-      loadOrders();
-      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
-    },
   });
 
   const markAllPreparedMutation = useMutation({
     mutationFn: async () => {
-      const allItems = orders.flatMap(o => o.items);
+      const allItems = ordersWithDetails.flatMap(o => o.items);
       const pendingItems = allItems.filter(item => item.status !== "ready" && item.status !== "served");
       
       await Promise.all(
@@ -77,10 +85,6 @@ export default function KitchenPage() {
           apiRequest("PATCH", `/api/order-items/${item.id}/status`, { status: "ready" })
         )
       );
-    },
-    onSuccess: () => {
-      loadOrders();
-      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
     },
   });
 
@@ -103,9 +107,9 @@ export default function KitchenPage() {
   };
 
   const statusCounts = {
-    new: orders.filter((o) => getOverallOrderStatus(o.items) === "new").length,
-    preparing: orders.filter((o) => getOverallOrderStatus(o.items) === "preparing").length,
-    ready: orders.filter((o) => getOverallOrderStatus(o.items) === "ready").length,
+    new: ordersWithDetails.filter((o) => getOverallOrderStatus(o.items) === "new").length,
+    preparing: ordersWithDetails.filter((o) => getOverallOrderStatus(o.items) === "preparing").length,
+    ready: ordersWithDetails.filter((o) => getOverallOrderStatus(o.items) === "ready").length,
   };
 
   return (
@@ -136,7 +140,7 @@ export default function KitchenPage() {
           </div>
           <Button
             onClick={handleMarkAllPrepared}
-            disabled={orders.length === 0 || markAllPreparedMutation.isPending}
+            disabled={ordersWithDetails.length === 0 || markAllPreparedMutation.isPending}
             className="bg-success hover:bg-success/90"
             data-testid="button-mark-all-prepared"
           >
@@ -149,11 +153,11 @@ export default function KitchenPage() {
       <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Loading orders...</div>
-        ) : orders.length === 0 ? (
+        ) : ordersWithDetails.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">No active orders</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {orders.map(({ order, items, tableNumber }) => (
+            {ordersWithDetails.map(({ order, items, tableNumber }) => (
               <KitchenOrderCard
                 key={order.id}
                 orderId={order.id}

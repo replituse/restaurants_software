@@ -1,22 +1,61 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import AppHeader from "@/components/AppHeader";
 import TableCard from "@/components/TableCard";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { Table } from "@shared/schema";
+import { useWebSocket } from "@/hooks/use-websocket";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Table, Order } from "@shared/schema";
+
+interface TableWithOrder extends Table {
+  orderStartTime?: string | null;
+}
 
 export default function TablesPage() {
   const [, navigate] = useLocation();
+  useWebSocket();
+  const [tablesWithOrders, setTablesWithOrders] = useState<TableWithOrder[]>([]);
 
   const { data: tables = [], isLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
-    refetchInterval: 5000,
+  });
+
+  const { data: orders = [] } = useQuery<Order[]>({
+    queryKey: ["/api/orders"],
+  });
+
+  useEffect(() => {
+    const enrichTables = tables.map((table) => {
+      const tableOrder = orders.find((order) => order.id === table.currentOrderId);
+      return {
+        ...table,
+        orderStartTime: tableOrder?.createdAt ? String(tableOrder.createdAt) : null,
+      };
+    });
+    setTablesWithOrders(enrichTables);
+  }, [tables, orders]);
+
+  const markServedMutation = useMutation({
+    mutationFn: async (tableId: string) => {
+      const table = tablesWithOrders.find((t) => t.id === tableId);
+      if (!table || !table.currentOrderId) return;
+
+      const orderItemsRes = await fetch(`/api/orders/${table.currentOrderId}/items`);
+      const orderItems = await orderItemsRes.json();
+
+      await Promise.all(
+        orderItems.map((item: any) =>
+          apiRequest("PATCH", `/api/order-items/${item.id}/status`, { status: "served" })
+        )
+      );
+    },
   });
 
   const handleTableClick = (id: string) => {
-    const table = tables.find(t => t.id === id);
+    const table = tablesWithOrders.find((t) => t.id === id);
     if (!table) return;
 
     if (table.status === "free") {
@@ -26,13 +65,17 @@ export default function TablesPage() {
     }
   };
 
+  const handleToggleServed = async (tableId: string) => {
+    await markServedMutation.mutateAsync(tableId);
+  };
+
   const statusCounts = {
-    free: tables.filter((t) => t.status === "free").length,
-    occupied: tables.filter((t) => t.status === "occupied").length,
-    preparing: tables.filter((t) => t.status === "preparing").length,
-    ready: tables.filter((t) => t.status === "ready").length,
-    reserved: tables.filter((t) => t.status === "reserved").length,
-    served: tables.filter((t) => t.status === "served").length,
+    free: tablesWithOrders.filter((t) => t.status === "free").length,
+    occupied: tablesWithOrders.filter((t) => t.status === "occupied").length,
+    preparing: tablesWithOrders.filter((t) => t.status === "preparing").length,
+    ready: tablesWithOrders.filter((t) => t.status === "ready").length,
+    reserved: tablesWithOrders.filter((t) => t.status === "reserved").length,
+    served: tablesWithOrders.filter((t) => t.status === "served").length,
   };
 
   const getStatusColor = (status: string) => {
@@ -89,7 +132,7 @@ export default function TablesPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#3acd32]"></div>
+              <div className="w-3 h-3 rounded-full bg-[#9b30ff]"></div>
               <span className="text-sm">
                 Served <Badge variant="secondary">{statusCounts.served}</Badge>
               </span>
@@ -114,14 +157,16 @@ export default function TablesPage() {
           <div className="text-center py-8 text-muted-foreground">Loading tables...</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-            {tables.map((table) => (
+            {tablesWithOrders.map((table) => (
               <TableCard
                 key={table.id}
                 id={table.id}
                 tableNumber={table.tableNumber}
                 status={getTableStatus(table)}
                 seats={table.seats}
+                orderStartTime={table.orderStartTime}
                 onClick={handleTableClick}
+                onToggleServed={handleToggleServed}
               />
             ))}
           </div>

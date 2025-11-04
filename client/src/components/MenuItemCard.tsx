@@ -30,19 +30,12 @@ export default function MenuItemCard({
       data-testid={`menu-item-${id}`}
     >
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isVeg ? 'bg-green-500' : 'bg-red-500'}`}></div>
-      <div className="aspect-video bg-muted relative">
-        {image ? (
-          <img src={image} alt={name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50"></div>
-        )}
+      <div className="p-3 relative">
         {!available && (
           <Badge className="absolute top-2 right-2 bg-danger text-white">
             Out of Stock
           </Badge>
         )}
-      </div>
-      <div className="p-3">
         <h3 className="font-semibold text-card-foreground truncate" data-testid={`text-item-name-${id}`}>
           {name}
         </h3>

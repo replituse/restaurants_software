@@ -203,12 +203,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allReady = allItems.every((i) => i.status === "ready" || i.status === "served");
       const allServed = allItems.every((i) => i.status === "served");
 
+      let newTableStatus = null;
       if (allServed) {
+        newTableStatus = "served";
         await storage.updateTableStatus(order.tableId, "served");
       } else if (allReady) {
+        newTableStatus = "ready";
         await storage.updateTableStatus(order.tableId, "ready");
       } else if (allPreparing) {
+        newTableStatus = "preparing";
         await storage.updateTableStatus(order.tableId, "preparing");
+      }
+
+      if (newTableStatus) {
+        const updatedTable = await storage.getTable(order.tableId);
+        if (updatedTable) {
+          broadcastUpdate("table_updated", updatedTable);
+        }
       }
     }
 
