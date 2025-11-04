@@ -12,6 +12,7 @@ export default function TablesPage() {
 
   const { data: tables = [], isLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
+    refetchInterval: 5000,
   });
 
   const handleTableClick = (id: string) => {
@@ -35,20 +36,18 @@ export default function TablesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "free": return "bg-muted";
-      case "occupied": return "bg-primary";
-      case "preparing": return "bg-warning";
-      case "ready": return "bg-success";
-      case "served": return "bg-green-400";
-      default: return "bg-muted";
+      case "free": return "bg-gray-300";
+      case "occupied": return "bg-[#ff2400]";
+      case "preparing": return "bg-[#fff500]";
+      case "ready": return "bg-[#3acd32]";
+      case "served": return "bg-[#3acd32]";
+      case "reserved": return "bg-[#0075ff]";
+      default: return "bg-gray-300";
     }
   };
 
-  const getTableStatus = (table: Table): "available" | "occupied" | "reserved" | "billed" => {
-    if (table.status === "free") return "available";
-    if (table.status === "served") return "billed";
-    if (table.status === "preparing" || table.status === "ready") return "reserved";
-    return "occupied";
+  const getTableStatus = (table: Table): "free" | "occupied" | "preparing" | "ready" | "reserved" | "served" => {
+    return table.status as "free" | "occupied" | "preparing" | "ready" | "reserved" | "served";
   };
 
   return (
@@ -59,31 +58,31 @@ export default function TablesPage() {
         <div className="flex items-center justify-between">
           <div className="flex gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-muted border border-border"></div>
+              <div className="w-3 h-3 rounded-full bg-gray-300 border border-gray-400"></div>
               <span className="text-sm">
                 Free <Badge variant="secondary">{statusCounts.free}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary"></div>
+              <div className="w-3 h-3 rounded-full bg-[#ff2400]"></div>
               <span className="text-sm">
                 Occupied <Badge variant="secondary">{statusCounts.occupied}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-warning"></div>
+              <div className="w-3 h-3 rounded-full bg-[#fff500]"></div>
               <span className="text-sm">
                 Preparing <Badge variant="secondary">{statusCounts.preparing}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-success"></div>
+              <div className="w-3 h-3 rounded-full bg-[#3acd32]"></div>
               <span className="text-sm">
                 Ready <Badge variant="secondary">{statusCounts.ready}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-400"></div>
+              <div className="w-3 h-3 rounded-full bg-[#3acd32]"></div>
               <span className="text-sm">
                 Served <Badge variant="secondary">{statusCounts.served}</Badge>
               </span>
