@@ -84,7 +84,7 @@ export default function TablesPage() {
       case "occupied": return "bg-[#ff2400]";
       case "preparing": return "bg-[#fff500]";
       case "ready": return "bg-[#3acd32]";
-      case "served": return "bg-[#3acd32]";
+      case "served": return "bg-[#9b30ff]";
       case "reserved": return "bg-[#0075ff]";
       default: return "bg-gray-300";
     }

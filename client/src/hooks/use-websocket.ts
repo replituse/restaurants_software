@@ -9,9 +9,14 @@ interface WebSocketMessage {
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     const connect = () => {
+      if (!isMountedRef.current) return;
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/api/ws`;
       
@@ -58,14 +63,18 @@ export function useWebSocket() {
       };
 
       ws.onclose = () => {
-        console.log('[WebSocket] Disconnected, reconnecting in 3s...');
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        console.log('[WebSocket] Disconnected');
+        if (isMountedRef.current) {
+          console.log('[WebSocket] Reconnecting in 3s...');
+          reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        }
       };
     };
 
     connect();
 
     return () => {
+      isMountedRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
