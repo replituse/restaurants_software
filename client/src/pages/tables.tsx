@@ -31,6 +31,7 @@ export default function TablesPage() {
     occupied: tables.filter((t) => t.status === "occupied").length,
     preparing: tables.filter((t) => t.status === "preparing").length,
     ready: tables.filter((t) => t.status === "ready").length,
+    reserved: tables.filter((t) => t.status === "reserved").length,
     served: tables.filter((t) => t.status === "served").length,
   };
 
@@ -58,7 +59,7 @@ export default function TablesPage() {
         <div className="flex items-center justify-between">
           <div className="flex gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-gray-300 border border-gray-400"></div>
+              <div className="w-3 h-3 rounded-full bg-white border border-white shadow-md ring-1 ring-gray-200"></div>
               <span className="text-sm">
                 Free <Badge variant="secondary">{statusCounts.free}</Badge>
               </span>
@@ -79,6 +80,12 @@ export default function TablesPage() {
               <div className="w-3 h-3 rounded-full bg-[#3acd32]"></div>
               <span className="text-sm">
                 Ready <Badge variant="secondary">{statusCounts.ready}</Badge>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-[#0075ff]"></div>
+              <span className="text-sm">
+                Reserved <Badge variant="secondary">{statusCounts.reserved}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-2">

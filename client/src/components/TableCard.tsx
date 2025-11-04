@@ -12,33 +12,39 @@ interface TableCardProps {
 
 const statusConfig = {
   free: {
-    borderColor: "border-gray-300",
-    circleColor: "bg-white border-gray-300",
-    label: "Available",
+    borderColor: "border-white",
+    circleColor: "bg-white",
+    circleBorder: "border-white shadow-sm",
+    label: "Free",
   },
   occupied: {
     borderColor: "border-[#ff2400]",
     circleColor: "bg-[#ff2400]",
+    circleBorder: "border-[#ff2400]",
     label: "Occupied",
   },
   preparing: {
     borderColor: "border-[#fff500]",
     circleColor: "bg-[#fff500]",
+    circleBorder: "border-[#fff500]",
     label: "Preparing",
   },
   ready: {
     borderColor: "border-[#3acd32]",
     circleColor: "bg-[#3acd32]",
+    circleBorder: "border-[#3acd32]",
     label: "Ready",
   },
   reserved: {
     borderColor: "border-[#0075ff]",
     circleColor: "bg-[#0075ff]",
+    circleBorder: "border-[#0075ff]",
     label: "Reserved",
   },
   served: {
     borderColor: "border-[#3acd32]",
     circleColor: "bg-[#3acd32]",
+    circleBorder: "border-[#3acd32]",
     label: "Served",
   },
 };
@@ -59,14 +65,14 @@ export default function TableCard({
       data-testid={`table-${id}`}
       className={cn(
         "p-4 rounded-lg border-2 bg-white transition-all hover:shadow-lg active:scale-95 min-w-32",
-        config.borderColor
+        status === "free" ? "border-white shadow-md" : config.borderColor
       )}
     >
       <div className="flex flex-col items-center gap-2">
         <div className={cn(
           "w-16 h-16 rounded-full border-2 flex items-center justify-center",
           config.circleColor,
-          config.borderColor
+          config.circleBorder
         )}>
           <span className="text-2xl font-semibold text-black">{tableNumber}</span>
         </div>
