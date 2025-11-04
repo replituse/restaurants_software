@@ -290,33 +290,37 @@ export default function BillingPage() {
   const total = subtotal + tax;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
       <AppHeader title="Billing / POS" showSearch={false} />
       
-      <div className="bg-muted/30 border-b border-border px-6 py-2">
+      <div className="bg-white border-b border-gray-200 px-6 py-3 shadow-sm">
         <div className="flex items-center justify-between text-sm">
-          <div className="flex gap-6">
+          <div className="flex gap-8">
             {tableNumber ? (
-              <span className="text-muted-foreground">
-                Table: <span className="font-medium text-foreground">{tableNumber}</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 font-medium">Table:</span>
+                <Badge variant="default" className="font-semibold">{tableNumber}</Badge>
+              </div>
             ) : (
-              <span className="text-muted-foreground">
-                Mode: <span className="font-medium text-foreground capitalize">{serviceType}</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 font-medium">Mode:</span>
+                <Badge variant="outline" className="capitalize font-medium">{serviceType}</Badge>
+              </div>
             )}
-            <span className="text-muted-foreground">
-              User: <span className="font-medium text-foreground">Cashier</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 font-medium">User:</span>
+              <span className="font-semibold text-gray-900">Cashier</span>
+            </div>
           </div>
-          <span className="text-muted-foreground">
-            Date: <span className="font-medium text-foreground">{new Date().toLocaleDateString()}</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 font-medium">Date:</span>
+            <span className="font-semibold text-gray-900">{new Date().toLocaleDateString()}</span>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-48 lg:w-56 shrink-0 hidden md:block">
+        <div className="w-52 lg:w-60 shrink-0 hidden md:block bg-white border-r border-gray-200">
           <CategorySidebar
             categories={categories}
             selectedCategory={selectedCategory}
@@ -325,34 +329,36 @@ export default function BillingPage() {
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="p-4 border-b border-border">
+          <div className="p-5 bg-white border-b border-gray-200">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 placeholder="Search menu items..."
-                className="pl-10"
+                className="pl-11 h-11 text-base border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 data-testid="input-menu-search"
               />
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {filteredItems.length} items found
+              <span className="text-sm text-gray-600 font-medium">
+                {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} available
               </span>
               {selectedCategory !== "all" && (
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="font-medium">
                   {categories.find((c) => c.id === selectedCategory)?.name}
                 </Badge>
               )}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 md:p-4">
+          <div className="flex-1 overflow-y-auto p-5 bg-gray-50">
             {menuLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading menu...</div>
+              <div className="text-center py-12 text-gray-500">
+                <div className="animate-pulse">Loading menu...</div>
+              </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredItems.map((item) => (
                   <MenuItemCard 
                     key={item.id} 
@@ -370,7 +376,7 @@ export default function BillingPage() {
           </div>
         </div>
 
-        <div className="w-full md:w-96 shrink-0 md:block">
+        <div className="w-full md:w-[400px] shrink-0 md:block bg-white shadow-lg">
           <OrderCart
             items={orderItems}
             serviceType={serviceType}

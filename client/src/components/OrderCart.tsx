@@ -86,9 +86,9 @@ export default function OrderCart({
   };
 
   return (
-    <div className="h-full bg-card border-l border-card-border flex flex-col">
-      <div className="p-4 border-b border-card-border">
-        <h2 className="font-semibold text-card-foreground mb-3">Current Order</h2>
+    <div className="h-full bg-white flex flex-col">
+      <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-primary/5 to-primary/10">
+        <h2 className="font-bold text-gray-900 mb-3 text-lg">Current Order</h2>
         <div className="flex gap-2">
           {(["dine-in", "delivery", "pickup"] as const).map((type) => (
             <Button
@@ -97,7 +97,7 @@ export default function OrderCart({
               variant={serviceType === type ? "default" : "outline"}
               onClick={() => onServiceTypeChange(type)}
               data-testid={`button-service-${type}`}
-              className="flex-1 capitalize text-xs sm:text-sm"
+              className="flex-1 capitalize text-xs sm:text-sm font-medium"
             >
               {type.replace("-", " ")}
             </Button>
@@ -107,52 +107,57 @@ export default function OrderCart({
 
       <div className="flex-1 overflow-y-auto p-4">
         {items.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            <p>No items in cart</p>
-            <p className="text-sm mt-2">Add items from the menu</p>
+          <div className="text-center text-gray-400 py-12">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+            <p className="font-medium text-gray-600">No items in cart</p>
+            <p className="text-sm mt-1">Add items from the menu</p>
           </div>
         ) : (
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.id} className="border border-border rounded-lg p-3" data-testid={`cart-item-${item.id}`}>
-                <div className="flex items-start gap-2 mb-2">
+              <div key={item.id} className="border-2 border-gray-200 rounded-xl p-3 bg-white hover:border-primary/30 hover:shadow-sm transition-all" data-testid={`cart-item-${item.id}`}>
+                <div className="flex items-start gap-2 mb-3">
                   <div className="flex-1">
-                    <p className="font-medium text-card-foreground">{item.name}</p>
-                    <p className="text-sm text-muted-foreground">₹{item.price.toFixed(2)}</p>
+                    <p className="font-semibold text-gray-900 text-sm">{item.name}</p>
+                    <p className="text-sm text-gray-500 font-medium">₹{item.price.toFixed(2)} each</p>
                   </div>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6"
+                    className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
                     onClick={() => onRemoveItem(item.id)}
                     data-testid={`button-remove-${item.id}`}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1">
                     <Button
                       size="icon"
-                      variant="outline"
-                      className="h-7 w-7"
+                      variant="ghost"
+                      className="h-8 w-8 hover:bg-white"
                       onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
                       data-testid={`button-decrease-${item.id}`}
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-4 w-4" />
                     </Button>
-                    <span className="w-8 text-center font-medium" data-testid={`text-quantity-${item.id}`}>
+                    <span className="w-10 text-center font-bold text-gray-900" data-testid={`text-quantity-${item.id}`}>
                       {item.quantity}
                     </span>
                     <Button
                       size="icon"
-                      variant="outline"
-                      className="h-7 w-7"
+                      variant="ghost"
+                      className="h-8 w-8 hover:bg-white"
                       onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
                       data-testid={`button-increase-${item.id}`}
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                   
@@ -161,15 +166,16 @@ export default function OrderCart({
                     variant="ghost"
                     onClick={() => handleOpenNotes(item)}
                     data-testid={`button-notes-${item.id}`}
+                    className="text-xs font-medium"
                   >
                     <StickyNote className="h-3 w-3 mr-1" />
-                    {item.notes ? "Edit" : "Add"} Note
+                    {item.notes ? "Edit" : "Add"}
                   </Button>
                 </div>
                 
                 {item.notes && (
-                  <p className="text-xs text-muted-foreground mt-2 italic bg-muted/50 p-2 rounded">
-                    {item.notes}
+                  <p className="text-xs text-gray-600 mt-2 italic bg-blue-50 p-2 rounded-lg border border-blue-100">
+                    📝 {item.notes}
                   </p>
                 )}
               </div>
@@ -178,27 +184,27 @@ export default function OrderCart({
         )}
       </div>
 
-      <div className="p-4 border-t border-card-border bg-muted/30">
-        <div className="space-y-2 mb-4">
+      <div className="p-5 border-t-2 border-gray-200 bg-gray-50">
+        <div className="space-y-2 mb-4 bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="text-card-foreground" data-testid="text-subtotal">₹{subtotal.toFixed(2)}</span>
+            <span className="text-gray-600 font-medium">Subtotal</span>
+            <span className="text-gray-900 font-semibold" data-testid="text-subtotal">₹{subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tax (5%)</span>
-            <span className="text-card-foreground" data-testid="text-tax">₹{tax.toFixed(2)}</span>
+            <span className="text-gray-600 font-medium">Tax (5%)</span>
+            <span className="text-gray-900 font-semibold" data-testid="text-tax">₹{tax.toFixed(2)}</span>
           </div>
           <Separator />
-          <div className="flex justify-between font-semibold">
-            <span>Total</span>
-            <span className="text-primary text-lg" data-testid="text-total">₹{total.toFixed(2)}</span>
+          <div className="flex justify-between font-bold text-lg pt-1">
+            <span className="text-gray-900">Total</span>
+            <span className="text-primary" data-testid="text-total">₹{total.toFixed(2)}</span>
           </div>
         </div>
         
         {showKOTButton && onSendKOT && (
           <Button
-            variant="default"
-            className="w-full mb-2"
+            variant="outline"
+            className="w-full mb-2 border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold"
             disabled={items.length === 0}
             onClick={onSendKOT}
             data-testid="button-send-kot"
@@ -209,7 +215,7 @@ export default function OrderCart({
         )}
         
         <Button
-          className="w-full"
+          className="w-full shadow-lg hover:shadow-xl"
           size="lg"
           disabled={items.length === 0}
           onClick={onCheckout}

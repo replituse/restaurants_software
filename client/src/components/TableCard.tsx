@@ -1,4 +1,4 @@
-import { Users, Clock } from "lucide-react";
+import { Users, Clock, FileText, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
@@ -11,14 +11,16 @@ interface TableCardProps {
   orderStartTime?: string | null;
   onClick: (id: string) => void;
   onToggleServed?: (id: string) => void;
+  onViewOrder?: (id: string) => void;
+  onBilling?: (id: string) => void;
 }
 
 const statusConfig = {
   free: {
-    borderColor: "border-white",
+    borderColor: "border-black",
     circleColor: "bg-white",
-    circleBorder: "border-white shadow-sm",
-    label: "Free",
+    circleBorder: "border-black",
+    label: "Available",
   },
   occupied: {
     borderColor: "border-[#ff2400]",
@@ -45,9 +47,9 @@ const statusConfig = {
     label: "Reserved",
   },
   served: {
-    borderColor: "border-[#9b30ff]",
-    circleColor: "bg-[#9b30ff]",
-    circleBorder: "border-[#9b30ff]",
+    borderColor: "border-[#8000ff]",
+    circleColor: "bg-[#8000ff]",
+    circleBorder: "border-[#8000ff]",
     label: "Served",
   },
 };
@@ -61,6 +63,8 @@ export default function TableCard({
   orderStartTime,
   onClick,
   onToggleServed,
+  onViewOrder,
+  onBilling,
 }: TableCardProps) {
   const config = statusConfig[status];
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -88,11 +92,7 @@ export default function TableCard({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    if (status === "ready" && onToggleServed) {
-      e.stopPropagation();
-    } else {
-      onClick(id);
-    }
+    onClick(id);
   };
 
   const handleServedClick = (e: React.MouseEvent) => {
@@ -101,24 +101,42 @@ export default function TableCard({
       onToggleServed(id);
     }
   };
+
+  const handleViewOrder = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onViewOrder) {
+      onViewOrder(id);
+    }
+  };
+
+  const handleBilling = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onBilling) {
+      onBilling(id);
+    }
+  };
   
   return (
-    <div className="relative">
+    <div className="relative flex flex-col items-center">
       <button
         onClick={handleClick}
         data-testid={`table-${id}`}
         className={cn(
-          "w-full p-4 rounded-lg border-2 bg-white transition-all hover:shadow-lg active:scale-95 min-w-32",
-          status === "free" ? "border-white shadow-md" : config.borderColor
+          "w-full p-4 rounded-lg border-2 bg-white transition-all hover:shadow-xl hover:scale-105 active:scale-95 min-w-32",
+          config.borderColor
         )}
       >
         <div className="flex flex-col items-center gap-2">
           <div className={cn(
-            "w-16 h-16 rounded-full border-2 flex items-center justify-center",
+            "w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all",
             config.circleColor,
-            config.circleBorder
+            config.circleBorder,
+            status === "free" && "text-black"
           )}>
-            <span className="text-2xl font-semibold text-black">{tableNumber}</span>
+            <span className={cn(
+              "text-2xl font-semibold",
+              status === "free" ? "text-black" : "text-white"
+            )}>{tableNumber}</span>
           </div>
           <div className="text-center w-full">
             <p className="text-xs font-semibold uppercase text-black">{config.label}</p>
@@ -137,15 +155,39 @@ export default function TableCard({
           </div>
         </div>
       </button>
+      
       {status === "ready" && onToggleServed && (
         <button
           onClick={handleServedClick}
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#9b30ff] hover:bg-[#8a2be2] text-white text-xs px-3 py-1 rounded-full font-medium transition-colors z-10"
+          className="mt-2 bg-[#8000ff] hover:bg-[#7000e6] text-white text-xs px-4 py-1.5 rounded-full font-medium transition-all hover:shadow-md"
           data-testid={`toggle-served-${id}`}
         >
           Mark Served
         </button>
       )}
+      
+      <div className="flex gap-2 mt-2">
+        {onViewOrder && (
+          <button
+            onClick={handleViewOrder}
+            className="w-9 h-9 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-all hover:shadow-md hover:scale-110 active:scale-95"
+            title="View Order Details"
+            data-testid={`view-order-${id}`}
+          >
+            <FileText className="h-4 w-4" />
+          </button>
+        )}
+        {onBilling && (
+          <button
+            onClick={handleBilling}
+            className="w-9 h-9 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition-all hover:shadow-md hover:scale-110 active:scale-95"
+            title="Go to Billing"
+            data-testid={`billing-${id}`}
+          >
+            <DollarSign className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

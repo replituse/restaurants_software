@@ -6,6 +6,13 @@ import TableCard from "@/components/TableCard";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Table, Order } from "@shared/schema";
@@ -18,6 +25,9 @@ export default function TablesPage() {
   const [, navigate] = useLocation();
   useWebSocket();
   const [tablesWithOrders, setTablesWithOrders] = useState<TableWithOrder[]>([]);
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<TableWithOrder | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any[]>([]);
 
   const { data: tables = [], isLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
@@ -28,6 +38,11 @@ export default function TablesPage() {
   });
 
   useEffect(() => {
+    if (!tables.length) {
+      setTablesWithOrders([]);
+      return;
+    }
+    
     const enrichTables = tables.map((table) => {
       const tableOrder = orders.find((order) => order.id === table.currentOrderId);
       return {
@@ -35,7 +50,11 @@ export default function TablesPage() {
         orderStartTime: tableOrder?.createdAt ? String(tableOrder.createdAt) : null,
       };
     });
-    setTablesWithOrders(enrichTables);
+    
+    setTablesWithOrders(prevTables => {
+      const hasChanged = JSON.stringify(prevTables) !== JSON.stringify(enrichTables);
+      return hasChanged ? enrichTables : prevTables;
+    });
   }, [tables, orders]);
 
   const markServedMutation = useMutation({
@@ -52,21 +71,68 @@ export default function TablesPage() {
         )
       );
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
+    },
   });
 
-  const handleTableClick = (id: string) => {
+  const handleTableClick = async (id: string) => {
     const table = tablesWithOrders.find((t) => t.id === id);
     if (!table) return;
 
     if (table.status === "free") {
       navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&type=dine-in`);
     } else if (table.currentOrderId) {
-      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&orderId=${table.currentOrderId}&type=dine-in`);
+      setSelectedTable(table);
+      
+      try {
+        const response = await fetch(`/api/orders/${table.currentOrderId}/items`);
+        const items = await response.json();
+        setOrderDetails(items);
+      } catch (error) {
+        setOrderDetails([]);
+      }
+      
+      setShowOrderDialog(true);
     }
   };
 
   const handleToggleServed = async (tableId: string) => {
     await markServedMutation.mutateAsync(tableId);
+  };
+
+  const handleViewOrder = async (tableId: string) => {
+    const table = tablesWithOrders.find((t) => t.id === tableId);
+    if (!table) return;
+    
+    setSelectedTable(table);
+    
+    if (table.currentOrderId) {
+      try {
+        const response = await fetch(`/api/orders/${table.currentOrderId}/items`);
+        const items = await response.json();
+        setOrderDetails(items);
+      } catch (error) {
+        setOrderDetails([]);
+      }
+    } else {
+      setOrderDetails([]);
+    }
+    
+    setShowOrderDialog(true);
+  };
+
+  const handleBilling = (tableId: string) => {
+    const table = tablesWithOrders.find((t) => t.id === tableId);
+    if (!table) return;
+    
+    if (table.status === "free") {
+      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&type=dine-in`);
+    } else if (table.currentOrderId) {
+      navigate(`/billing?tableId=${table.id}&tableNumber=${table.tableNumber}&orderId=${table.currentOrderId}&type=dine-in`);
+    }
   };
 
   const statusCounts = {
@@ -80,13 +146,13 @@ export default function TablesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "free": return "bg-gray-300";
+      case "free": return "bg-white border border-black";
       case "occupied": return "bg-[#ff2400]";
       case "preparing": return "bg-[#fff500]";
       case "ready": return "bg-[#3acd32]";
-      case "served": return "bg-[#9b30ff]";
+      case "served": return "bg-[#8000ff]";
       case "reserved": return "bg-[#0075ff]";
-      default: return "bg-gray-300";
+      default: return "bg-white border border-black";
     }
   };
 
@@ -102,9 +168,9 @@ export default function TablesPage() {
         <div className="flex items-center justify-between">
           <div className="flex gap-4 flex-wrap">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-white border border-white shadow-md ring-1 ring-gray-200"></div>
-              <span className="text-sm">
-                Free <Badge variant="secondary">{statusCounts.free}</Badge>
+              <div className="w-4 h-4 rounded-full bg-white border-2 border-black shadow-sm"></div>
+              <span className="text-sm font-medium">
+                Available <Badge variant="secondary">{statusCounts.free}</Badge>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -132,7 +198,7 @@ export default function TablesPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#9b30ff]"></div>
+              <div className="w-3 h-3 rounded-full bg-[#8000ff]"></div>
               <span className="text-sm">
                 Served <Badge variant="secondary">{statusCounts.served}</Badge>
               </span>
@@ -152,7 +218,6 @@ export default function TablesPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <h2 className="text-lg font-semibold mb-4">Floor 1 - Main Dining</h2>
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Loading tables...</div>
         ) : (
@@ -167,11 +232,78 @@ export default function TablesPage() {
                 orderStartTime={table.orderStartTime}
                 onClick={handleTableClick}
                 onToggleServed={handleToggleServed}
+                onViewOrder={handleViewOrder}
+                onBilling={handleBilling}
               />
             ))}
           </div>
         )}
       </div>
+
+      <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Order Details - Table {selectedTable?.tableNumber}</DialogTitle>
+            <DialogDescription>
+              {selectedTable?.status === "free" 
+                ? "No active order" 
+                : `Current order status: ${selectedTable?.status}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {orderDetails.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-lg font-medium">Empty</p>
+                <p className="text-sm mt-1">No items in this order</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {orderDetails.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className="flex justify-between items-center p-3 bg-muted rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Qty: {item.quantity} × ₹{parseFloat(item.price).toFixed(2)}
+                      </p>
+                      {item.notes && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Note: {item.notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">
+                        ₹{(item.quantity * parseFloat(item.price)).toFixed(2)}
+                      </p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        item.status === 'new' ? 'bg-red-100 text-red-700' :
+                        item.status === 'preparing' ? 'bg-yellow-100 text-yellow-700' :
+                        item.status === 'ready' ? 'bg-green-100 text-green-700' :
+                        'bg-purple-100 text-purple-700'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <div className="border-t pt-3 mt-3">
+                  <div className="flex justify-between items-center font-bold text-lg">
+                    <span>Total:</span>
+                    <span className="text-primary">
+                      ₹{orderDetails.reduce((sum, item) => 
+                        sum + (item.quantity * parseFloat(item.price)), 0
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
